@@ -1,0 +1,39 @@
+{
+    "exitCommand": "quit",
+    "genericErrorMessage": "That command is not valid",
+    "commands": [
+        {
+            "input": "enabled",
+            "output": "Admin enabled",
+            "error": "",
+            "branchCommands": [
+                {
+                    "input": "enable ip",
+                    "output": "Ip Enabled"
+                },
+                {
+                    "input": "show ip",
+                    "output": "IP Address: 192.168.1.1\r\nSubnet Mask: 255.255.255.0"
+                },
+                {
+                    "input": "enable vlan",
+                    "output": "VLAN 1",
+                    "branchCommands": [
+                        {
+                            "input": "set vlan X",
+                            "output": "Vlan X Enabled"
+                        },
+                        {
+                            "input": "delete vlan X",
+                            "output": "Vlan X disabled"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "input": "show version",
+            "output": "Simulated Device v1.0\r\nOS: CustomOS"
+        }
+    ]
+}
