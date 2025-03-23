@@ -1,4 +1,4 @@
-# Devsim
+# Devmock
 > Simulate simple field devices with a cli and a mocked list of commands.
 
 ## Development
