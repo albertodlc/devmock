@@ -136,10 +136,10 @@ def listener():
     # server.event.wait(30)
     transport.close()
 
-while True:
-    try:
-        listener()
-    except KeyboardInterrupt:
-        sys.exit(0)
-    except Exception as exc:
-        logger.error(exc)
+# while True:
+#     try:
+#         listener()
+#     except KeyboardInterrupt:
+#         sys.exit(0)
+#     except Exception as exc:
+#         logger.error(exc)
