@@ -7,7 +7,6 @@ import paramiko
 import traceback
 
 from stream.ChannelBuffer import ChannelBuffer
-from parser.JsonParser import JsonParser
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -95,18 +94,6 @@ def handle_client(chan: paramiko.Channel):
             traceback.print_exc()
             break
 
-def process_command(command: str):
-    """Processes CLI commands and returns appropriate responses."""
-
-    device_parser = JsonParser(filename='XS1234.json')
-
-    # commands = {
-    #     "show version": "Simulated Device v1.0\r\nOS: CustomOS",
-    #     "show ip": "IP Address: 192.168.1.1\r\nSubnet Mask: 255.255.255.0",
-    # }
-
-    return device_parser.get_command(user_cmd=command)
-
 def listener():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -136,10 +123,10 @@ def listener():
     # server.event.wait(30)
     transport.close()
 
-while True:
-    try:
-        listener()
-    except KeyboardInterrupt:
-        sys.exit(0)
-    except Exception as exc:
-        logger.error(exc)
+# while True:
+#     try:
+#         listener()
+#     except KeyboardInterrupt:
+#         sys.exit(0)
+#     except Exception as exc:
+#         logger.error(exc)

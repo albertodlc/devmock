@@ -1,6 +1,10 @@
 from server.SSHServer import SSHServer
-from parser.JsonParser import JsonParser
+from server.TelnetServer import TelnetServer
 
 if __name__ == "__main__":
-    ssh_server = SSHServer(port=2222)
-    ssh_server.start()
+    if False:
+        ssh_server = SSHServer(port=2222)
+        ssh_server.start()
+    else:
+        telnet_server = TelnetServer(port=2323)
+        telnet_server.start()
