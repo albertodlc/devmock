@@ -1,5 +1,12 @@
-# Devmock
-> Simulate simple field devices with a cli and a mocked list of commands.
+![devmock banner](./images/banner.png)
+
+## Goal
+Simulate basic telecommunication field devices supporting both SSH and Telnet protocols, providing a simple command-line interface (CLI), and including a mocked set of commands based on a user-defined JSON file.
+
+This devices could be:
+- Digital Radios
+- Switches
+- Routers
 
 ## Requirements
 - Minimum Python version 3.13
