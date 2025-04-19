@@ -1,26 +1,30 @@
 from paramiko import Channel
+from stream.ChannelWrapper import ChannelWrapper
+from telnetlib3.stream_writer import TelnetWriterUnicode
+from telnetlib3.stream_reader import TelnetReaderUnicode
 
 class ChannelBuffer():
     RETURN_KEY = b'\x7f'
 
     LINUX_EOL = '\r'
-    WIN_EOL = '\r\n'
 
     DECODING = 'utf-8'
 
-    def __init__(self, channel: Channel):
-        self.channel = channel
-
-    def read(self, eol=LINUX_EOL):
+    def __init__(self, channel_ssh: Channel = None, reader: TelnetReaderUnicode = None, writer: TelnetWriterUnicode = None):
+        if channel_ssh != None:
+            self.channel: ChannelWrapper = ChannelWrapper(channel=channel_ssh)
+        else:
+            self.channel: ChannelWrapper = ChannelWrapper(reader=reader, writer=writer)
+    async def read(self, eol=LINUX_EOL):
         """Read data from the channel until a EOL is detected"""
         line: str = ''
 
         while True:
             # Read one BYTE at a time
-            raw_chunk: bytes = self.channel.recv(1)
+            raw_chunk: bytes = await self.channel.recv()
 
             # Display on terminal
-            self.write_raw(raw_data=raw_chunk)
+            self.echo(raw_data=raw_chunk)
 
             # Decode chunk
             chunk: str = raw_chunk.decode(self.DECODING)
@@ -42,20 +46,18 @@ class ChannelBuffer():
                 
         return line.strip()
     
-    def write_raw(self, raw_data: str):
+    def echo(self, raw_data: str):
         """Write to the channel (live on the terminal) without adding the eol"""
         print(f'Write to channel: {raw_data}')
 
-        self.channel.send(raw_data)
+        self.channel.echo(raw_data)
 
     def write(self, message: str):
         """Write to the channel adding the eol"""
-        self.channel.send(self.WIN_EOL)
         self.channel.send(message)
-        self.channel.send(f"{self.WIN_EOL}>")
     
     def close(self):
         """Display an exit message and close the channel"""
-        self.write('Goodbye!')
+        # self.write('Goodbye!')
 
         self.channel.close()

@@ -1,81 +1,58 @@
-import socketserver
+import asyncio
+import telnetlib3
 
-# Define your login credentials
-VALID_USERNAME = "admin"
-VALID_PASSWORD = "secret"
+from command.Commands import Commands
 
-class TelnetHandler(socketserver.StreamRequestHandler):
-    def handle(self):
-        self.wfile.write(b"Welcome to the Telnet server!\r\n")
-        
-        # Prompt for username
-        self.wfile.write(b"Username: ")
-        username = self.read_line()
-
-        # Prompt for password
-        self.wfile.write(b"Password: ")
-        password = self.read_line()
-
-        # Authentication check
-        if username == VALID_USERNAME and password == VALID_PASSWORD:
-            print(f'Login success for {username}')
-            self.wfile.write(b"\r\nLogin successful!\r\n")
-            self.interactive_shell()
-        else:
-            self.wfile.write(b"\r\nLogin failed. Connection closing.\r\n")
-
-    def read_line(self):
-        """
-        Read a line of input from the client, removing Telnet control sequences.
-        """
-        raw_line = self.rfile.readline()
-        print(f'RAW LINE: {raw_line}')
-
-        cleaned_line = self.clean_telnet_data(raw_line)
-        print(f'CLEANED LINE: {cleaned_line}')
-
-        return cleaned_line
-
-    def clean_telnet_data(self, data):
-        """
-        Remove Telnet control sequences (bytes starting with 0xFF)
-        """
-        clean_data = bytearray()
-
-        i = 0
-        while i < len(data):
-            byte = data[i]
-
-            # If we encounter IAC (0xFF), skip the next byte (Telnet control sequence)
-            if byte == 0xFF:
-                i += 2  # Skip IAC byte + the next byte (the command byte)
-                continue
-            else:
-                clean_data.append(byte)
-
-            i += 1
-
-        # Convert the cleaned bytearray to a string (UTF-8)
-        return clean_data.decode("utf-8", errors="replace").strip()
-
-    def interactive_shell(self):
-        self.wfile.write(b"Type 'exit' to disconnect.\n")
-        while True:
-            self.wfile.write(b"> ")
-            command = self.read_line()
-            if command.lower() == "exit":
-                self.wfile.write(b"Goodbye!\n")
-                break
-            else:
-                response = f"You said: {command}\n"
-                self.wfile.write(response.encode("utf-8"))
+from stream.ChannelBuffer import ChannelBuffer
+from telnetlib3.stream_writer import TelnetWriterUnicode
+from telnetlib3.stream_reader import TelnetReaderUnicode
 
 class TelnetServer:
-    def __init__(self, host="0.0.0.0", port=2323):
+    def __init__(self, host='0.0.0.0', port=2323):
         self.host = host
         self.port = port
+        self.server = None
+        self.loop = asyncio.get_event_loop()
+
+        self.cmds = Commands('XS1234.json')
+
+    async def shell(self, reader: TelnetReaderUnicode , writer: TelnetWriterUnicode):
+        self.chan_buffer = ChannelBuffer(reader=reader, writer=writer)
+
+        self.chan_buffer.write("Welcome to the Telnet server!\r\nType 'help', 'show ip', or 'exit'")
+
+        while True:
+            line = await self.chan_buffer.read()
+            if not line:
+                break
+
+            command = line.strip().lower()
+
+            cmd_response: str = self.cmds.process_command(command)
+
+            if cmd_response == "terminate":
+                self.chan_buffer.close()
+                break
+            else:
+                self.chan_buffer.write(cmd_response)
 
     def start(self):
-        with socketserver.TCPServer((self.host, self.port), TelnetHandler) as server:
-            print(f"Telnet server running on {self.host}:{self.port}")
-            server.serve_forever()
+        '''Init server and setup the main loop'''
+
+        print(f"Starting Telnet server on {self.host}:{self.port}")
+        coro = telnetlib3.create_server(
+            host=self.host,
+            port=self.port,
+            shell=self.shell
+        )
+        self.server = self.loop.run_until_complete(coro)
+
+        try:
+            self.loop.run_forever()
+        except KeyboardInterrupt:
+            print("Shutting down...")
+        finally:
+            self.server.close()
+            self.loop.run_until_complete(self.server.wait_closed())
+            self.loop.close()
+
