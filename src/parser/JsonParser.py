@@ -1,87 +1,87 @@
 import json
 from pathlib import Path
 
+
 class JsonParser:
-    raw_commands = {}
 
-    command_error = 'Invalid command!'
-    command_exit = 'exit'
-    commands = []
-    command_stack = []
-    
     def __init__(self, filename: str):
-        data = None
+        self.command_error: str = 'Invalid command!'
+        self.command_exit: str = 'exit'
+        self.raw_commands: dict = {}
+        self.commands: list = []
+        self.command_stack: list[str] = []
 
-        # TODO: Improve this relative paths
-        path = Path('data') / filename
-        full_path = path.resolve()
+        # Resolve path relative to this file, not CWD
+        # index 0=parser, 1=src, 2=root
+        project_root = Path(__file__).resolve().parents[2]
+        full_path = project_root / 'data' / filename
 
         with open(full_path, "r") as file:
-            self.raw_commands = json.load(file)     
-        
-        # TODO: init exit and invalid command
-        if self.raw_commands['genericErrorMessage']:
-            self.command_error = self.raw_commands['genericErrorMessage']
-        
-        if self.raw_commands['exitCommand']:
-            self.command_exit = self.raw_commands['exitCommand']
+            self.raw_commands = json.load(file)
 
-        self.commands = self.raw_commands['commands']
+        self.command_error = self.raw_commands.get('genericErrorMessage', self.command_error)
+        self.command_exit = self.raw_commands.get('exitCommand', self.command_exit)
+        self.commands = self.raw_commands.get('commands', [])
 
-    def _find_next_level_commands(self, levels_cmds: [], prev_search_cmd: str)  -> []:
-        for level_cmd in levels_cmds:
-            if level_cmd['input'] == prev_search_cmd:
-                return level_cmd['branchCommands']
+    # ------------------------------------------------------------------
+    # Private helpers
+    # ------------------------------------------------------------------
 
+    def _get_level_commands(self, commands: list[dict], stack: list[str]) -> list[dict]:
+        """Recursively walk the command tree following the current stack,
+        returning the command list at the current depth."""
+
+        if not stack:
+            return commands
+
+        for cmd in commands:
+            if cmd['input'] == stack[0]:
+                return self._get_level_commands(
+                    cmd.get('branchCommands', []),
+                    stack[1:]
+                )
+
+        return []
+
+    def _find_command(self, commands: list[dict], user_cmd: str) -> dict | None:
+        """Find a command node by input string in a flat command list."""
+
+        for cmd in commands:
+            if cmd['input'] == user_cmd:
+                return cmd
         return None
 
-    def _find_next_level_command(self, levels_cmds: [], search_cmd: str)  -> {}:
-        for level_cmd in levels_cmds:
-            if level_cmd['input'] == search_cmd:
-                return level_cmd
-
-        return None
-
-    def _add_to_stack(self, value: str):
+    def _push(self, value: str) -> None:
         self.command_stack.append(value)
+        # print(f'Stack: {self.command_stack}')
 
-        print(f'Current CMD Stack status: {self.command_stack}')
-
-    def _pop_from_stack(self):
+    def _pop(self) -> None:
         self.command_stack.pop()
+        # print(f'Stack: {self.command_stack}')
 
-        print(f'Current CMD Stack status: {self.command_stack}')
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
 
-    def get_command(self, user_cmd: str):
-        if user_cmd == self.command_exit and len(self.command_stack) > 0:
-            self._pop_from_stack()
+    def get_command(self, user_cmd: str) -> str:
+        """Process a user command and return the appropriate response."""
 
-            return ''
-        elif user_cmd == self.command_exit:
+        # Handle exit
+        if user_cmd == self.command_exit:
+            if self.command_stack:
+                self._pop()
+                return ''
             return 'terminate'
 
-        # Command in Level 1
-        next_level_command = None
+        # Get the command list at the current stack depth (recursive traversal)
+        current_level = self._get_level_commands(self.commands, self.command_stack)
+        match = self._find_command(current_level, user_cmd)
 
-        if len(self.command_stack) == 0:
-            for command in self.commands:
-                if command['input'] == user_cmd:
-                    if 'branchCommands' in command:
-                        self._add_to_stack(user_cmd)
+        if match is None:
+            return self.command_error
 
-                    return command['output']
-        # Command in a level > 1
-        else:
-            for stack_command in self.command_stack:
-                next_level_commands = self._find_next_level_commands(self.commands, stack_command)
+        # If this command opens a new branch, push it onto the stack
+        if 'branchCommands' in match:
+            self._push(user_cmd)
 
-            next_level_command = self._find_next_level_command(next_level_commands, user_cmd)
-
-        if next_level_command and next_level_command['input'] == user_cmd and 'branchCommands' in next_level_command:
-            self._add_to_stack(user_cmd)
-        
-        # Si tiene siguiente nivel
-        if next_level_command:
-            return next_level_command['output']
-
-        return self.command_error
+        return match.get('output', '')

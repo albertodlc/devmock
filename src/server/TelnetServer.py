@@ -14,7 +14,7 @@ class TelnetServer:
         self.server = None
         self.loop = asyncio.get_event_loop()
 
-        self.cmds = Commands('XS1234.json')
+        self.cmds = Commands('XS1234_TEST.json')
 
     async def shell(self, reader: TelnetReaderUnicode , writer: TelnetWriterUnicode):
         self.chan_buffer = ChannelBuffer(reader=reader, writer=writer)
